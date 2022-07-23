@@ -1,0 +1,5 @@
+keyboard
+asyncio
+discord
+pyttsx3
+pydub
