@@ -12,6 +12,8 @@ from discord import ChannelType
 
 import sounds
 
+import subprocess
+
 # This should be placed into a class
 import pyttsx3
 from io import BytesIO
@@ -76,8 +78,8 @@ class clown_bot(discord.Client):
 		# This should be done with commands, but I don't want to figure it out
 		elif (message.channel.name == self.command_channel) and (message.content[0] == "$"):
 
-			message = message.content[1:]
-			command, content = message.split(" ", maxsplit = 1)
+			message_text = message.content[1:]
+			command, content = message_text.split(" ", maxsplit = 1)
 
 			if command == "clown":
 
@@ -106,9 +108,11 @@ class clown_bot(discord.Client):
 					audio_source = discord.FFmpegPCMAudio("clown_phrase.mp3", **FFMPEG_OPTIONS)
 					#audio_source = await discord.FFmpegOpusAudio.from_probe("entry_of_the_gladiators.opus")
 
+					await message.channel.send(choosen, tts = True)
+
 					vc = await found_channel.connect()
-					print(dir(vc))
-					print(dir(vc.source))
+					#print(dir(vc))
+					#print(dir(vc.source))
 
 					#player = vc.create_ffmpeg_player(bytes_file.read(), after=lambda: print('done'))
 					#player.start()
@@ -183,8 +187,16 @@ def main():
 
 	clowner.loop.create_task(input_listener.run())
 
-	token = json.load(open(os.path.join("secrets", "token.json"), "r"))["token"]
-	clowner.run(token)
+	keyboard = subprocess.Popen(["python", "keyboard_listener.py"])
+
+	try:
+		token = json.load(open(os.path.join("secrets", "token.json"), "r"))["token"]
+		clowner.run(token)
+	except:
+		pass
+	finally:
+		print("Shutting down")
+		keyboard.kill()
 
 if __name__ == "__main__":
 
