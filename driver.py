@@ -4,6 +4,10 @@ import datetime
 import keyboard
 import json
 import os
+import platform
+import random
+
+import argparse
 
 import asyncio
 import discord
@@ -19,13 +23,12 @@ import pyttsx3
 from io import BytesIO
 
 import sys
-sys.path.append(os.path.join("C:","Users","David","Anaconda3","pkgs","ffmpeg-4.3.1-ha925a31_0","Library","bin"))
 
 def find_target(voice_channels, target):
 
 	for v in voice_channels:
 		for m in v.voice_states.keys():
-			print(m)
+			#print(m)
 			if str(m) == target.strip("<@> "):
 				return v
 
@@ -33,15 +36,16 @@ def find_target(voice_channels, target):
 
 class clown_bot(discord.Client):
 
-	def __init__(self, target_channel, *args, sound_maker = None, command_channel = "bot-pit", **kwargs):
+	def __init__(self, *args, target_channel = None, target_user = None, sound_maker = None, command_channel = None, **kwargs):
 
 		if sound_maker is None:
 			self.sound_maker = sounds.noise_maker_composite.basic_pair()
 		else:
 			self.sound_maker = sound_maker
 
-		self.target_channel = target_channel
-		self.command_channel = command_channel
+		self.target_channel = target_channel or "shitomarsays"
+		self.target_user = target_user or "168605217858781186"
+		self.command_channel = command_channel or "bot-pit"
 
 		self.sound_dead_zone = 15
 		self.last_message_time = datetime.datetime.utcnow() - datetime.timedelta(seconds = self.sound_dead_zone)
@@ -56,6 +60,8 @@ class clown_bot(discord.Client):
 
 		if message.author == self.user:
 			return
+
+		voice_channels = list([x for x in self.get_all_channels() if x.type == ChannelType.voice])
 	 
 		print("Message content: {}".format(message.content))
 		print("Message from: {}".format(message.author))
@@ -64,16 +70,20 @@ class clown_bot(discord.Client):
 		print("Current time: {}".format(datetime.datetime.utcnow()))
 
 		if message.channel.name == self.target_channel:
-			print("Speak the truth")
 
-			await self.sound_maker.add_sound(message.content, "tts")
+			# Check for target in discord
+			if find_target(voice_channels, self.target_user) is not None:
 
-			if "clown" in message.content:
-				print("clowning")
+				print("Speak the truth")
 
-				await self.sound_maker.add_sound("clown", "sounds", timestamp = message.created_at)
+				await self.sound_maker.add_sound(message.content, "tts")
 
-			await self.sound_maker.play_all()
+				if "clown" in message.content:
+					print("clowning")
+
+					await self.sound_maker.add_sound("clown", "sounds", timestamp = message.created_at)
+
+				await self.sound_maker.play_all()
 
 		# This should be done with commands, but I don't want to figure it out
 		elif (message.channel.name == self.command_channel) and (message.content[0] == "$"):
@@ -85,44 +95,41 @@ class clown_bot(discord.Client):
 
 				print("clowning: {}".format(content.strip()))
 
-				voice_channels = list([x for x in self.get_all_channels() if x.type == ChannelType.voice])
-				#print(voice_channels)
-
 				# Find the target
 				found_channel = find_target(voice_channels, content)
 
 				if found_channel is not None:
-					print(dir(found_channel))
 
-					options = ["did you know that the annual salary of a clown is $50,000? So why are you doing it for free?"]
-					choosen = options[0]
+					options = ["{}, did you know that the annual salary of a clown is $51,000? So why are you doing it for free?",
+								"{}? Never heard of that clown before. Which means that not only are they a clown, they are not even a well known clown.",
+								"{}, there is a point where your clowning needs to stop and we have clearly passed it.",
+								"{}, your circus called and they said they are missing their clown.",
+								"{}, did you train to become a clown or does it just come naturally?",
+								"Warning: an experimental hyper clown named {} has escaped Area 51. If sighted, run for your life."]
+					choosen = random.choice(options)
+
+					# Decode the name
+					target_name_decoded = await self.fetch_user(content.strip("<@> "))
+					phrase = choosen.format(target_name_decoded.name)
+
+					# TODO: once audio is working, remove tts and replace with the commented out section 
+					await message.channel.send(phrase, tts = True)
+					"""
 					engine = pyttsx3.init()
 					bytes_file = BytesIO()
-					engine.save_to_file(choosen, bytes_file)
+					engine.save_to_file(phrase, bytes_file)
 					engine.runAndWait()
 
-					#clown_theme = self.sound_maker.queues["sounds"].sounds["clown"]
-					#audio_source = discord.FFmpegPCMAudio(bytes_file.read())
-					#audio_source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("sound_assets", "entry_of_the_gladiators.mp3")))
-					FFMPEG_OPTIONS = {'options': '-vn'}
-					audio_source = discord.FFmpegPCMAudio("clown_phrase.mp3", **FFMPEG_OPTIONS)
-					#audio_source = await discord.FFmpegOpusAudio.from_probe("entry_of_the_gladiators.opus")
-
-					await message.channel.send(choosen, tts = True)
+					audio_source = discord.FFmpegPCMAudio(bytes_file.read())
 
 					vc = await found_channel.connect()
-					#print(dir(vc))
-					#print(dir(vc.source))
 
-					#player = vc.create_ffmpeg_player(bytes_file.read(), after=lambda: print('done'))
-					#player.start()
-					#vc.source.volume = 100
 					vc.play(audio_source, after = lambda x: print("done playing"))
 					while vc.is_playing():
 						await asyncio.sleep(1)
 
-					#vc.play(audio_source, after = None)
 					await vc.disconnect()
+					"""
 
 class tcp_listener():
 
@@ -177,17 +184,20 @@ class tcp_listener():
 		async with self.server:
 			await self.server.serve_forever()
 
-def main():
+def main(**kwargs):
 
 	sound_maker = sounds.noise_maker_composite.basic_pair()
 
 	input_listener = tcp_listener(sound_maker)
 
-	clowner = clown_bot(target_channel = "shitomarsays", sound_maker = sound_maker)
+	clowner = clown_bot(**kwargs)
 
 	clowner.loop.create_task(input_listener.run())
 
-	keyboard = subprocess.Popen(["python", "keyboard_listener.py"])
+	if platform.system() == "Windows":
+		keyboard = subprocess.Popen(["python", "keyboard_listener.py"])
+	else:
+		keyboard = subprocess.Popen(["sudo", "python", "keyboard_listener.py"])
 
 	try:
 		token = json.load(open(os.path.join("secrets", "token.json"), "r"))["token"]
@@ -200,4 +210,18 @@ def main():
 
 if __name__ == "__main__":
 
-	main()
+	parser = argparse.ArgumentParser(description = "Only begun, the clown wars have")
+
+	parser.add_argument("--target_channel", "-c",
+                    default = None,
+                    help = "The channel to watch for things to quote")
+	parser.add_argument("--target_user", "-u",
+                    default = None,
+                    help = "The person to harass in target_channel")
+	parser.add_argument("--command_channel", "-o",
+                    default = None,
+                    help = "The channel to watch for bot commands")
+
+	kwargs = vars(parser.parse_args())
+
+	main(**kwargs)
