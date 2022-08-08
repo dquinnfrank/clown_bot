@@ -22,8 +22,10 @@ import subprocess
 import pyttsx3
 from io import BytesIO
 
-import sys
+sys_info = json.load(open("sys_info.json", "r"))
+base_directory = sys_info["base_directory"]
 
+#TODO: move this to a shared util
 def find_target(voice_channels, target):
 
 	for v in voice_channels:
@@ -36,13 +38,19 @@ def find_target(voice_channels, target):
 
 class clown_bot(discord.Client):
 
-	def __init__(self, *args, target_channel = None, target_user = None, sound_maker = None, command_channel = None, **kwargs):
+	def __init__(self, *args, target_channel = None, target_user = None, sound_maker = None, discord_sound_maker = None, command_channel = None, **kwargs):
 
 		if sound_maker is None:
 			self.sound_maker = sounds.noise_maker_composite.basic_pair()
 		else:
 			self.sound_maker = sound_maker
 
+		if discord_sound_maker is None:
+			self.discord_sound_maker = sounds.discord_noise_maker(self, sound_timeout = 10, sound_deadzone = 20)
+		else:
+			self.discord_sound_maker = discord_sound_maker
+
+		# TODO: save these configs externally
 		self.target_channel = target_channel or "shitomarsays"
 		self.target_user = target_user or "168605217858781186"
 		self.command_channel = command_channel or "bot-pit"
@@ -95,41 +103,9 @@ class clown_bot(discord.Client):
 
 				print("clowning: {}".format(content.strip()))
 
-				# Find the target
-				found_channel = find_target(voice_channels, content)
+				await self.discord_sound_maker.add_sound(message, timestamp = message.created_at)
 
-				if found_channel is not None:
-
-					options = ["{}, did you know that the annual salary of a clown is $51,000? So why are you doing it for free?",
-								"{}? Never heard of that clown before. Which means that not only are they a clown, they are not even a well known clown.",
-								"{}, there is a point where your clowning needs to stop and we have clearly passed it.",
-								"{}, your circus called and they said they are missing their clown.",
-								"{}, did you train to become a clown or does it just come naturally?",
-								"Warning: an experimental hyper clown named {} has escaped Area 51. If sighted, run for your life."]
-					choosen = random.choice(options)
-
-					# Decode the name
-					target_name_decoded = await self.fetch_user(content.strip("<@> "))
-					phrase = choosen.format(target_name_decoded.name)
-
-					# TODO: once audio is working, remove tts and replace with the commented out section 
-					await message.channel.send(phrase, tts = True)
-					"""
-					engine = pyttsx3.init()
-					bytes_file = BytesIO()
-					engine.save_to_file(phrase, bytes_file)
-					engine.runAndWait()
-
-					audio_source = discord.FFmpegPCMAudio(bytes_file.read())
-
-					vc = await found_channel.connect()
-
-					vc.play(audio_source, after = lambda x: print("done playing"))
-					while vc.is_playing():
-						await asyncio.sleep(1)
-
-					await vc.disconnect()
-					"""
+				await self.discord_sound_maker.play_all()
 
 class tcp_listener():
 

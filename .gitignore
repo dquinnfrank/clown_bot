@@ -1,4 +1,6 @@
-
+#Auto generated info script
+sys_info.json
+linux_run_on_start_2.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

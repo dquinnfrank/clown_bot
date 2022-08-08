@@ -1,14 +1,18 @@
 import subprocess
 import os
 
-python_exe = os.path.join("C:", "Users", "David", "Anaconda3", "python.exe")
-clown_folder = os.path.join("C:", "Users", "David", "Documents", "Programming", "clown_bot")
+import json
+sys_info = json.load(open("sys_info.json", "r"))
+base_directory = sys_info["base_directory"]
 
 def create():
 
 	driver = subprocess.Popen(["python", "driver.py"])
 
-	keyboard = subprocess.Popen(["python", "keyboard_listener.py"])
+	if platform.system() == "Windows":
+		keyboard = subprocess.Popen(["python", os.path.join(base_directory, "keyboard_listener.py")])
+	else:
+		keyboard = subprocess.Popen(["sudo", "python", os.path.join(base_directory, "keyboard_listener.py")])
 
 	return driver, keyboard
 

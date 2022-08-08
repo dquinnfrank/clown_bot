@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import datetime
 import json
 import os
+import random
 
 from collections import OrderedDict
 
@@ -11,6 +12,22 @@ from pydub.playback import play
 import pyttsx3
 
 import asyncio
+
+from discord import ChannelType
+
+sys_info = json.load(open("sys_info.json", "r"))
+base_directory = sys_info["base_directory"]
+
+#TODO: move this to a shared util
+def find_target(voice_channels, target):
+
+	for v in voice_channels:
+		for m in v.voice_states.keys():
+			#print(m)
+			if str(m) == target.strip("<@> "):
+				return v
+
+	return None
 
 class noise_maker(ABC):
 	"""
@@ -300,6 +317,69 @@ class text_to_speech_player(noise_maker_single):
 
 		self.engine.say(sound)
 		self.engine.runAndWait()
+
+class discord_noise_maker(noise_maker_single):
+	"""
+	Plays sounds on discord channels
+	TODO: connect to voice and play sounds rather than using tts
+	"""
+
+	def __init__(self, client, **kwargs):
+
+		super().__init__(**kwargs)
+
+		# TODO: see if there's a better way to access the client than using the whole bot class
+		self.client = client
+
+		self.options = ["{target}, did you know that the annual salary of a clown is $51,000? So why are you doing it for free?",
+						"{target}? Never heard of that clown before. Which means that not only are they a clown, they are not even a well known clown.",
+						"{target}, there is a point where your clowning needs to stop and we have clearly passed it.",
+						"{target}, your circus called and they said they are missing their clown.",
+						"{target}, did you train to become a clown or does it just come naturally?",
+						"Warning: an experimental hyper clown named {target} has escaped Area 51. If sighted, run for your life."]
+
+	async def make_sound(self, sound):
+		"""
+		Reads the sent text if the user is present in a voice channel
+		"""
+
+		message = sound
+
+		message_text = message.content[1:]
+		command, content = message_text.split(" ", maxsplit = 1)
+
+		target = content.strip("<@>")
+
+		voice_channels = list([x for x in self.client.get_all_channels() if x.type == ChannelType.voice])
+
+		found_channel = find_target(voice_channels, target)
+		print(found_channel)
+
+		if found_channel is not None:
+
+			choosen = random.choice(self.options)
+
+			target_name_decoded = await self.client.fetch_user(target)
+			phrase = choosen.format(target = target_name_decoded.name)
+
+			# TODO: once audio is working, remove tts and replace with the commented out section 
+			await message.channel.send(phrase, tts = True)
+			"""
+			engine = pyttsx3.init()
+			bytes_file = BytesIO()
+			engine.save_to_file(phrase, bytes_file)
+			engine.runAndWait()
+
+			audio_source = discord.FFmpegPCMAudio(bytes_file.read())
+
+			vc = await found_channel.connect()
+
+			vc.play(audio_source, after = lambda x: print("done playing"))
+			while vc.is_playing():
+				await asyncio.sleep(1)
+
+			await vc.disconnect()
+			"""
 
 async def test_clips():
 
