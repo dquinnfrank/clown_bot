@@ -1,6 +1,6 @@
 keyboard
 asyncio
-discord
 pyttsx3
 pydub
+pyaudio
 pynacl

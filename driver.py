@@ -25,6 +25,9 @@ from io import BytesIO
 sys_info = json.load(open("sys_info.json", "r"))
 base_directory = sys_info["base_directory"]
 
+#intents = discord.Intents.default()
+#intents.message_content = True
+
 #TODO: move this to a shared util
 def find_target(voice_channels, target):
 
@@ -39,6 +42,10 @@ def find_target(voice_channels, target):
 class clown_bot(discord.Client):
 
 	def __init__(self, *args, target_channel = None, target_user = None, sound_maker = None, discord_sound_maker = None, command_channel = None, **kwargs):
+
+		intents = discord.Intents.default()
+		intents.members = True
+		intents.message_content = True
 
 		if sound_maker is None:
 			self.sound_maker = sounds.noise_maker_composite.basic_pair()
@@ -58,7 +65,13 @@ class clown_bot(discord.Client):
 		self.sound_dead_zone = 15
 		self.last_message_time = datetime.datetime.utcnow() - datetime.timedelta(seconds = self.sound_dead_zone)
 
-		super().__init__(*args, **kwargs)
+		super().__init__(*args, intents = intents, **kwargs)
+
+	async def setup_hook(self):
+
+		input_listener = tcp_listener(self.sound_maker)
+
+		self.loop.create_task(input_listener.run())
 
 	async def on_ready(self):
 
@@ -75,7 +88,7 @@ class clown_bot(discord.Client):
 		print("Message from: {}".format(message.author))
 		print("In channel: {}".format(message.channel.name))
 		print("At time: {}".format(message.created_at))
-		print("Current time: {}".format(datetime.datetime.utcnow()))
+		print("Current time: {}".format(datetime.datetime.now(datetime.timezone.utc)))
 
 		if message.channel.name == self.target_channel:
 
@@ -164,11 +177,11 @@ def main(**kwargs):
 
 	sound_maker = sounds.noise_maker_composite.basic_pair()
 
-	input_listener = tcp_listener(sound_maker)
+	#input_listener = tcp_listener(sound_maker)
 
 	clowner = clown_bot(**kwargs)
 
-	clowner.loop.create_task(input_listener.run())
+	#clowner.loop.create_task(input_listener.run())
 
 	if platform.system() == "Windows":
 		keyboard = subprocess.Popen(["python", "keyboard_listener.py"])

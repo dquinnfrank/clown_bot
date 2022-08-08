@@ -14,14 +14,18 @@ import pyttsx3
 import asyncio
 
 from discord import ChannelType
+import discord
+
+import tempfile
+import uuid
 
 sys_info = json.load(open("sys_info.json", "r"))
 base_directory = sys_info["base_directory"]
 
-from discord.opus import load_opus, is_loaded
-load_opus()
-if not is_loaded():
-    raise RunTimeError('Opus failed to load')
+#from discord.opus import load_opus, is_loaded
+#load_opus()
+#if not is_loaded():
+#    raise RunTimeError('Opus failed to load')
 
 #TODO: move this to a shared util
 def find_target(voice_channels, target):
@@ -96,7 +100,7 @@ class noise_maker_single(noise_maker):
 		"""
 
 		if timestamp is None:
-			timestamp = datetime.datetime.utcnow()
+			timestamp = datetime.datetime.now(datetime.timezone.utc)
 
 		self.sound_queue.put_nowait((timestamp, sound))
 
@@ -119,7 +123,8 @@ class noise_maker_single(noise_maker):
 
 			next_sound_time = next_sound_item[0]
 			next_sound = next_sound_item[1]
-			current_time = datetime.datetime.utcnow()
+			#current_time = datetime.datetime.utcnow()
+			current_time = datetime.datetime.now(datetime.timezone.utc)
 
 			print("play_next current_time: {}".format(current_time))
 			print("play_next next_sound_time: {}".format(next_sound_time))
@@ -375,21 +380,22 @@ class discord_noise_maker(noise_maker_single):
 			target_name_decoded = await self.client.fetch_user(target)
 			phrase = choosen.format(target = target_name_decoded.name)
 
-			# TODO: once audio is working, remove tts and replace with the commented out section 
-			#await message.channel.send(phrase, tts = True)
-
 			engine = pyttsx3.init()
-			bytes_file = BytesIO()
-			engine.save_to_file(phrase, bytes_file)
-			engine.runAndWait()
 
-			audio_source = discord.FFmpegPCMAudio(bytes_file.read())
+			with tempfile.TemporaryDirectory() as tmpdirname:
 
-			vc = await found_channel.connect()
+				temp_file = os.path.join(tmpdirname, "{}.mp3".format(uuid.uuid4()))
 
-			vc.play(audio_source, after = lambda x: print("done playing"))
-			while vc.is_playing():
-				await asyncio.sleep(1)
+				engine.save_to_file(phrase, temp_file)
+				engine.runAndWait()
+
+				audio_source = discord.FFmpegPCMAudio(temp_file)
+
+				vc = await found_channel.connect()
+
+				vc.play(audio_source, after = lambda x: print("done playing"))
+				while vc.is_playing():
+					await asyncio.sleep(1)
 
 			await vc.disconnect()
 
