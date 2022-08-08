@@ -18,6 +18,11 @@ from discord import ChannelType
 sys_info = json.load(open("sys_info.json", "r"))
 base_directory = sys_info["base_directory"]
 
+from discord.opus import load_opus, is_loaded
+load_opus()
+if not is_loaded():
+    raise RunTimeError('Opus failed to load')
+
 #TODO: move this to a shared util
 def find_target(voice_channels, target):
 
@@ -324,12 +329,14 @@ class discord_noise_maker(noise_maker_single):
 	TODO: connect to voice and play sounds rather than using tts
 	"""
 
-	def __init__(self, client, **kwargs):
+	def __init__(self, client, send_to_channel = None, **kwargs):
 
 		super().__init__(**kwargs)
 
 		# TODO: see if there's a better way to access the client than using the whole bot class
 		self.client = client
+
+		self.send_to_channel = send_to_channel or "general"
 
 		self.options = ["{target}, did you know that the annual salary of a clown is $51,000? So why are you doing it for free?",
 						"{target}? Never heard of that clown before. Which means that not only are they a clown, they are not even a well known clown.",
@@ -352,6 +359,12 @@ class discord_noise_maker(noise_maker_single):
 
 		voice_channels = list([x for x in self.client.get_all_channels() if x.type == ChannelType.voice])
 
+		text_channels = list([x for x in self.client.get_all_channels() if x.type == ChannelType.text])
+		target_channel = None
+		#for text_channel in text_channels:
+
+			#if text_channel.name == self.send_to_channel:
+
 		found_channel = find_target(voice_channels, target)
 		print(found_channel)
 
@@ -363,8 +376,8 @@ class discord_noise_maker(noise_maker_single):
 			phrase = choosen.format(target = target_name_decoded.name)
 
 			# TODO: once audio is working, remove tts and replace with the commented out section 
-			await message.channel.send(phrase, tts = True)
-			"""
+			#await message.channel.send(phrase, tts = True)
+
 			engine = pyttsx3.init()
 			bytes_file = BytesIO()
 			engine.save_to_file(phrase, bytes_file)
@@ -379,7 +392,7 @@ class discord_noise_maker(noise_maker_single):
 				await asyncio.sleep(1)
 
 			await vc.disconnect()
-			"""
+
 
 async def test_clips():
 
