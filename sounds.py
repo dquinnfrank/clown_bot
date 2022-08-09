@@ -388,7 +388,9 @@ class discord_noise_maker(noise_maker_single):
 
 				engine.save_to_file(phrase, temp_file)
 				engine.runAndWait()
-
+				while engine.isBusy():
+					time.sleep(.1)
+ 
 				audio_source = discord.FFmpegPCMAudio(temp_file)
 
 				vc = await found_channel.connect()
