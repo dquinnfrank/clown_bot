@@ -99,7 +99,7 @@ class clown_bot(discord.Client):
 
 				await self.sound_maker.add_sound(message.content, "tts")
 
-				if "clown" in message.content.lower:
+				if "clown" in message.content.lower():
 					print("clowning")
 
 					await self.sound_maker.add_sound("clown", "sounds", timestamp = message.created_at)

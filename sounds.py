@@ -365,14 +365,7 @@ class discord_noise_maker(noise_maker_single):
 
 		voice_channels = list([x for x in self.client.get_all_channels() if x.type == ChannelType.voice])
 
-		text_channels = list([x for x in self.client.get_all_channels() if x.type == ChannelType.text])
-		target_channel = None
-		#for text_channel in text_channels:
-
-			#if text_channel.name == self.send_to_channel:
-
 		found_channel = find_target(voice_channels, target)
-		print(found_channel)
 
 		if found_channel is not None:
 
@@ -389,8 +382,8 @@ class discord_noise_maker(noise_maker_single):
 
 				engine.save_to_file(phrase, temp_file)
 				engine.runAndWait()
-				while engine.isBusy():
-					time.sleep(.1)
+				while not os.path.exists(temp_file) or os.path.getsize(temp_file) <= 0:
+					await asyncio.sleep(.1)
  
 				audio_source = discord.FFmpegPCMAudio(temp_file)
 
