@@ -10,7 +10,8 @@
 
 # Setup from new wifi
 * Remove Pi from case (It's really hard to get the display cable in otherwise)
-* Plug in power, usb hub, mouse/keyboard, and display (really push the display cable in hard, it is real finicky)
+* Plug in power, usb hub, mouse/keyboard, and monitor 
+  * The display cable is really finicky. If nothing shows up, turn off the Pi and plug the cable in again
 * Turn on Pi
 * Don't worry about the window that pops up
 * Connect the Pi to wifi
