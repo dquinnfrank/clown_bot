@@ -5,28 +5,36 @@ import json
 import os
 import random
 import time
+import tempfile
+import uuid
+import platform
 
 from collections import OrderedDict
 
 import pydub
 from pydub.playback import play
+
 import pyttsx3
+
+# FOR SOME REASON on linux, save_to_file needs runAndWait on the first run, and then subsequent runs will freeze if it is called
+# On windows, runAndWait needs to be called everytime
+# It defies all attempts to reasonably initialize it, so using the first run here is the next best thing
+engine = pyttsx3.init()
+with tempfile.TemporaryDirectory() as tmpdirname:
+
+	temp_file = os.path.join(tmpdirname, "IGNORE.mp3")
+
+	engine.save_to_file("Why are you like this", temp_file)
+	engine.runAndWait()
 
 import asyncio
 
 from discord import ChannelType
 import discord
 
-import tempfile
-import uuid
-
 sys_info = json.load(open("sys_info.json", "r"))
 base_directory = sys_info["base_directory"]
 
-#from discord.opus import load_opus, is_loaded
-#load_opus()
-#if not is_loaded():
-#    raise RunTimeError('Opus failed to load')
 
 #TODO: move this to a shared util
 def find_target(voice_channels, target):
@@ -344,12 +352,12 @@ class discord_noise_maker(noise_maker_single):
 
 		self.send_to_channel = send_to_channel or "general"
 
-		self.options = ["{target}, did you know that the annual salary of a clown is $51,000? So why are you doing it for free?",
+		self.options = ["{target}, did you know that the annual salary of a clown is 51,000 dollars? So why are you doing it for free?",
 						"{target}? Never heard of that clown before. Which means that not only are they a clown, they are not even a well known clown.",
 						"{target}, there is a point where your clowning needs to stop and we have clearly passed it.",
 						"{target}, your circus called and they said they are missing their clown.",
 						"{target}, did you train to become a clown or does it just come naturally?",
-						"Warning: an experimental hyper clown named {target} has escaped Area 51. If sighted, run for your life."]
+						"Warning: a super clown named {target} has escaped Area 51. If sighted, run for your life."]
 
 	async def make_sound(self, sound):
 		"""
@@ -363,8 +371,8 @@ class discord_noise_maker(noise_maker_single):
 
 		target = content.strip("<@>")
 
+		# Find the target in voice
 		voice_channels = list([x for x in self.client.get_all_channels() if x.type == ChannelType.voice])
-
 		found_channel = find_target(voice_channels, target)
 
 		if found_channel is not None:
@@ -376,12 +384,19 @@ class discord_noise_maker(noise_maker_single):
 
 			engine = pyttsx3.init()
 
+			# Save to a temp dir so that the files get cleaned up
 			with tempfile.TemporaryDirectory() as tmpdirname:
 
 				temp_file = os.path.join(tmpdirname, "{}.mp3".format(uuid.uuid4()))
 
 				engine.save_to_file(phrase, temp_file)
-				engine.runAndWait()
+
+				# On Linux, save_to_file executes without runAndWait (at least after the frist call)
+				os_name = platform.system()
+				if os_name == "Windows":
+					engine.runAndWait()
+
+				# Ensure that the file has been written before proceeding
 				while not os.path.exists(temp_file) or os.path.getsize(temp_file) <= 0:
 					await asyncio.sleep(.1)
  
@@ -389,7 +404,10 @@ class discord_noise_maker(noise_maker_single):
 
 				vc = await found_channel.connect()
 
+				# Play the clip
 				vc.play(audio_source, after = lambda x: print("done playing"))
+
+				# Wait for the clip to finish
 				while vc.is_playing():
 					await asyncio.sleep(1)
 
